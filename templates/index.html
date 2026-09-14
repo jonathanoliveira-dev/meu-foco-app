@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Meu Foco</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="brand"><span class="brand-icon">◎</span> Meu Foco</div>
+        <nav>
+            <a class="{{ 'active' if view == 'dashboard' else '' }}" href="{{ url_for('dashboard') }}">▦ <span>Dashboard</span></a>
+            <a class="{{ 'active' if view == 'history' else '' }}" href="{{ url_for('dashboard', view='history') }}">◷ <span>Histórico</span></a>
+            <a class="{{ 'active' if view == 'stats' else '' }}" href="{{ url_for('dashboard', view='stats') }}">▥ <span>Estatísticas</span></a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <header class="page-header">
+            <div>
+                <h1>{{ {'dashboard': 'Dashboard', 'history': 'Histórico', 'stats': 'Estatísticas'}[view] }}</h1>
+                <p>{{ 'Mantenha o foco no que importa hoje.' if view == 'dashboard' else 'Acompanhe sua evolução e suas tarefas.' }}</p>
+            </div>
+            <button class="primary" onclick="document.querySelector('#task-form').showModal()">+ Nova tarefa</button>
+        </header>
+
+        <section class="metrics" id="summary">
+            <article><span>♨ &nbsp; FOCO REGISTRADO</span><strong data-focused-seconds="{{ focused_seconds }}">0s</strong></article>
+            <article><span>✓ &nbsp; CONCLUÍDAS HOJE</span><strong>{{ completed_today }}</strong></article>
+            <article><span>▣ &nbsp; PLANEJADO HOJE</span><strong>{{ planned_minutes }} min</strong></article>
+        </section>
+
+        {% if view == 'stats' %}
+        <section class="stats-panel">
+            <h2>Resumo por categoria</h2>
+            {% for category in category_stats %}
+            <div class="stat-row"><span>{{ category.category }}</span><strong>{{ category.total }} tarefa{{ 's' if category.total != 1 else '' }}</strong></div>
+            {% else %}
+            <div class="empty-state"><strong>Sem dados ainda</strong><p>Crie tarefas para ver suas estatísticas.</p></div>
+            {% endfor %}
+        </section>
+        {% elif view == 'dashboard' %}
+        <section class="current">
+            <h2>Tarefa atual</h2>
+            {% if current_task %}
+            <div class="current-task">
+                <strong>{{ current_task.name }}</strong>
+                <span class="live-timer" data-started-at="{{ current_task.started_at }}" data-elapsed="{{ current_task.elapsed_seconds }}">00:00</span>
+                <form method="post" action="{{ url_for('complete_task', task_id=current_task.id) }}">
+                    <button class="primary" type="submit">✓ Concluir tarefa</button>
+                </form>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="target">◎</div>
+                <strong>Nenhuma tarefa em execução</strong>
+                <p>Selecione uma tarefa abaixo e toque em Iniciar<br>para começar a focar.</p>
+            </div>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        <section id="tasks">
+            <h2>{{ 'Histórico de tarefas' if view == 'history' else 'Próximas tarefas' }}</h2>
+            <div class="task-list">
+                {% for task in tasks %}
+                {% if view != 'history' or task.status == 'completed' %}
+                <article class="task {{ task.status }}">
+                    <div class="task-main">
+                        <h3>{{ task.name }} <em>{{ task.priority }}</em></h3>
+                        <p>{{ task.description }}</p>
+                        <small>{{ task.category }} · {{ task.minutes }} min planejados</small>
+                        <div class="actions">
+                            {% if task.status == 'pending' %}
+                            <form method="post" action="{{ url_for('start_task', task_id=task.id) }}"><button class="start" type="submit">▷ &nbsp; Iniciar</button></form>
+                            {% elif task.status == 'running' %}
+                            <form method="post" action="{{ url_for('pause_task', task_id=task.id) }}"><button class="pause" type="submit">Ⅱ &nbsp; Pausar</button></form>
+                            {% else %}
+                            <span class="completed-label">Concluída</span>
+                            {% endif %}
+                            <form method="post" action="{{ url_for('delete_task', task_id=task.id) }}" onsubmit="return confirm('Excluir esta tarefa?')"><button class="delete" type="submit">♧ &nbsp; Excluir</button></form>
+                        </div>
+                    </div>
+                    <div class="task-time"><strong class="task-timer" data-started-at="{{ task.started_at or '' }}" data-elapsed="{{ task.elapsed_seconds }}">{{ task.elapsed_seconds }}s</strong><span>{{ task.minutes }} min</span></div>
+                </article>
+                {% endif %}
+                {% else %}
+                <div class="empty-state"><strong>{{ 'Nenhum histórico ainda' if view == 'history' else 'Nenhuma tarefa criada' }}</strong><p>Crie uma tarefa para começar.</p></div>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+
+    <dialog id="task-form">
+        <form method="post">
+            <button type="button" class="close" onclick="this.closest('dialog').close()">×</button>
+            <h2>Nova tarefa</h2>
+            <p>Defina o que você vai focar e quanto tempo planeja dedicar.</p>
+            <label>Nome<input name="name" placeholder="Ex.: Estudar React" required></label>
+            <label>Descrição (opcional)<textarea name="description"></textarea></label>
+            <div class="form-grid">
+                <label>Categoria<select name="category"><option>Estudos</option><option>Trabalho</option><option>Pessoal</option></select></label>
+                <label>Prioridade<select name="priority"><option>Baixa</option><option selected>Média</option><option>Alta</option></select></label>
+            </div>
+            <label>Tempo planejado (min)<input type="number" name="minutes" value="25" min="1" required></label>
+            <div class="modal-actions">
+                <button type="button" onclick="this.closest('dialog').close()">Cancelar</button>
+                <button class="primary">Criar tarefa</button>
+            </div>
+        </form>
+    </dialog>
+</body>
+<script>
+    function formatSeconds(totalSeconds) {
+        const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+        const seconds = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
+        return `${minutes}:${seconds}`;
+    }
+
+    function updateTimers() {
+        let focusedSeconds = Number(document.querySelector('[data-focused-seconds]')?.dataset.focusedSeconds || 0);
+        document.querySelectorAll('[data-started-at]').forEach((element) => {
+            const storedSeconds = Number(element.dataset.elapsed || 0);
+            const startedAt = element.dataset.startedAt;
+            const liveSeconds = startedAt ? Math.max(0, Math.floor((Date.now() - Date.parse(startedAt)) / 1000)) : 0;
+            const totalSeconds = storedSeconds + liveSeconds;
+            element.textContent = element.classList.contains('live-timer') ? formatSeconds(totalSeconds) : `${totalSeconds}s`;
+            if (startedAt) focusedSeconds += liveSeconds;
+        });
+        const focused = document.querySelector('[data-focused-seconds]');
+        if (focused) focused.textContent = formatSeconds(focusedSeconds);
+    }
+
+    updateTimers();
+    setInterval(updateTimers, 1000);
+</script>
+</html>
