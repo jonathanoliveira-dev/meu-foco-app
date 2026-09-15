@@ -3,7 +3,13 @@ services:
     name: meu-foco
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
+    disk:
+      name: meu-foco-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8
+      - key: DATABASE_PATH
+        value: /var/data/meu-foco.db

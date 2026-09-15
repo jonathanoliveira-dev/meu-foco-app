@@ -1,11 +1,12 @@
 import sqlite3
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import Flask, redirect, render_template, request, url_for
 
 app = Flask(__name__)
-DATABASE = Path(app.root_path) / "meu-foco.db"
+DATABASE = Path(os.environ.get("DATABASE_PATH", Path(app.root_path) / "meu-foco.db"))
 
 
 def get_db():
